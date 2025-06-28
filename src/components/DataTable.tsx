@@ -733,7 +733,7 @@ export function DataTable({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-slate-100 to-slate-50 sticky top-0 z-10">
-              <TableRow className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 animate-pulse px-4 py-2">
+              <TableRow className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 px-4 py-2">
                 {tableView === "grouped" && groupBy !== "none" && <TableHead className="w-[50px] bg-gradient-to-r from-slate-100 to-slate-50 text-center"></TableHead>}
                 {visibleColumns.map(column => <TableHead key={column.key} className={cn("py-4 px-6 bg-gradient-to-r from-slate-100 to-slate-50 transition-all hover:bg-slate-200/50 cursor-pointer font-semibold text-slate-700", column.numeric ? "text-center" : "text-left")} onClick={() => requestSort(column.key)}>
                     <div className={cn("flex items-center gap-2 font-medium", column.numeric ? "justify-center" : "justify-start")}>
