@@ -44,6 +44,31 @@ interface ColumnDefinition {
   visible?: boolean;
 }
 
+interface GroupedDataItem {
+  key: string;
+  teacherName: string;
+  teacherEmail: string;
+  cleanedClass: string;
+  dayOfWeek: string;
+  classTime: string;
+  location: string;
+  period: string;
+  date: string;
+  children: ProcessedData[];
+  totalCheckins: number;
+  totalRevenue: number;
+  totalOccurrences: number;
+  totalCancelled: number;
+  totalEmpty: number;
+  totalNonEmpty: number;
+  totalNonPaid: number;
+  totalPayout?: number;
+  totalTips?: number;
+  classAverageIncludingEmpty: number | string;
+  classAverageExcludingEmpty: number | string;
+  isChild?: boolean;
+}
+
 export function DataTable({ data, trainerAvatars }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -73,28 +98,33 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
 
   // Auto expand/collapse all rows when toggle is changed
   useEffect(() => {
-    if (groupedData.length > 0) {
+    if (tableView === "grouped") {
       const newExpandedState: Record<string, boolean> = {};
-      groupedData.forEach((group: any) => {
-        newExpandedState[group.key] = expandAllGroups;
+      // Get current grouped data keys to set expansion state
+      const currentKeys = groupedData.map((group: GroupedDataItem) => group.key);
+      currentKeys.forEach((key: string) => {
+        newExpandedState[key] = expandAllGroups;
       });
       setExpandedRows(newExpandedState);
     }
-  }, [expandAllGroups]);
+  }, [expandAllGroups, tableView]);
 
-  // Group data by selected grouping option
-  const groupedData = useMemo(() => {
-    // If flat mode is activated, return data as is without grouping
+  // Group data by selected grouping option - memoized for performance
+  const groupedData = useMemo((): GroupedDataItem[] => {
+    // If flat mode is activated, return data as individual items
     if (tableView === "flat") {
-      return data.map(item => ({
+      return data.map((item, index) => ({
         ...item,
-        key: `flat-${item.uniqueID || data.indexOf(item)}`,
+        key: `flat-${item.uniqueID || index}`,
         isChild: true,
         children: [],
+        totalEmpty: item.totalCheckins === 0 ? 1 : 0,
+        totalNonEmpty: item.totalCheckins > 0 ? 1 : 0,
+        totalNonPaid: item.totalNonPaid || 0,
       }));
     }
     
-    const getGroupKey = (item: ProcessedData) => {
+    const getGroupKey = (item: ProcessedData): string => {
       switch(groupBy) {
         case "class-day-time-location-trainer":
           return `${item.cleanedClass}|${item.dayOfWeek}|${item.classTime}|${item.location}|${item.teacherName}`;
@@ -115,9 +145,16 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         case "trainer":
           return `${item.teacherName}`;
         case "month": {
-          const date = item.date;
-          const month = date ? new Date(date.split(',')[0]).toLocaleString('default', { month: 'long', year: 'numeric' }) : "Unknown";
-          return month;
+          const dateStr = item.date;
+          if (dateStr) {
+            try {
+              const date = new Date(dateStr.split(',')[0]);
+              return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            } catch {
+              return "Unknown";
+            }
+          }
+          return "Unknown";
         }
         case "none":
         default:
@@ -125,7 +162,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       }
     };
     
-    const groups: Record<string, any> = {};
+    const groups: Record<string, GroupedDataItem> = {};
     
     data.forEach(item => {
       const groupKey = getGroupKey(item);
@@ -133,14 +170,14 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       if (!groups[groupKey]) {
         groups[groupKey] = {
           key: groupKey,
-          teacherName: item.teacherName,
-          teacherEmail: item.teacherEmail,
-          cleanedClass: item.cleanedClass,
-          dayOfWeek: item.dayOfWeek,
-          classTime: item.classTime,
-          location: item.location,
-          period: item.period,
-          date: item.date,
+          teacherName: item.teacherName || '',
+          teacherEmail: item.teacherEmail || '',
+          cleanedClass: item.cleanedClass || '',
+          dayOfWeek: item.dayOfWeek || '',
+          classTime: item.classTime || '',
+          location: item.location || '',
+          period: item.period || '',
+          date: item.date || '',
           children: [],
           totalCheckins: 0,
           totalRevenue: 0,
@@ -150,34 +187,36 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           totalNonEmpty: 0,
           totalNonPaid: 0,
           totalPayout: 0,
-          totalTips: 0
+          totalTips: 0,
+          classAverageIncludingEmpty: 0,
+          classAverageExcludingEmpty: 0
         };
       }
       
-      // Add to children array - make a deep copy to avoid reference issues
+      // Add to children array
       groups[groupKey].children.push({...item});
       
       // Update metrics for group aggregation
       groups[groupKey].totalCheckins += Number(item.totalCheckins || 0);
       groups[groupKey].totalRevenue += Number(item.totalRevenue || 0);
-      groups[groupKey].totalOccurrences += Number(item.totalOccurrences || 1); // Each entry counts as one occurrence unless specified
+      groups[groupKey].totalOccurrences += 1;
       groups[groupKey].totalCancelled += Number(item.totalCancelled || 0);
       groups[groupKey].totalEmpty += (Number(item.totalCheckins || 0) === 0 ? 1 : 0);
       groups[groupKey].totalNonEmpty += (Number(item.totalCheckins || 0) > 0 ? 1 : 0);
       groups[groupKey].totalNonPaid += Number(item.totalNonPaid || 0);
-      groups[groupKey].totalPayout += Number(item.totalPayout || 0);
-      groups[groupKey].totalTips += Number(item.totalTips || 0);
+      if (item.totalPayout) groups[groupKey].totalPayout! += Number(item.totalPayout);
+      if (item.totalTips) groups[groupKey].totalTips! += Number(item.totalTips);
     });
     
     // Calculate averages for each group
-    Object.values(groups).forEach((group: any) => {
+    Object.values(groups).forEach((group: GroupedDataItem) => {
       group.classAverageIncludingEmpty = group.totalOccurrences > 0 
-        ? group.totalCheckins / group.totalOccurrences 
+        ? Number((group.totalCheckins / group.totalOccurrences).toFixed(1))
         : 0;
         
       group.classAverageExcludingEmpty = group.totalNonEmpty > 0 
-        ? group.totalCheckins / group.totalNonEmpty 
-        : 0;
+        ? Number((group.totalCheckins / group.totalNonEmpty).toFixed(1))
+        : 'N/A';
     });
     
     return Object.values(groups);
@@ -210,17 +249,17 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     { id: "all", label: "All Columns" }
   ];
 
-  // Filter the grouped data based on search term
+  // Filter the grouped data based on search term - memoized for performance
   const filteredGroups = useMemo(() => {
     if (!searchTerm) return groupedData;
     
     const searchLower = searchTerm.toLowerCase();
     
-    return groupedData.filter((group: any) => {
+    return groupedData.filter((group: GroupedDataItem) => {
       // For flat view, search in all properties
       if (tableView === "flat") {
         return Object.values(group).some(val => 
-          val && String(val).toLowerCase().includes(searchLower)
+          val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
         );
       }
       
@@ -237,10 +276,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       if (parentMatch) return true;
       
       // Search in child rows
-      if (group.children) {
+      if (group.children && group.children.length > 0) {
         return group.children.some((child: ProcessedData) => 
           Object.values(child).some(val => 
-            val && typeof val === 'string' && val.toLowerCase().includes(searchLower)
+            val !== null && val !== undefined && typeof val === 'string' && val.toLowerCase().includes(searchLower)
           )
         );
       }
@@ -249,13 +288,13 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     });
   }, [groupedData, searchTerm, tableView]);
   
-  // Apply sorting
+  // Apply sorting - memoized for performance
   const sortedGroups = useMemo(() => {
     if (!sortConfig) return filteredGroups;
     
     return [...filteredGroups].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
+      const aValue = a[sortConfig.key as keyof GroupedDataItem];
+      const bValue = b[sortConfig.key as keyof GroupedDataItem];
       
       const isNumeric = !isNaN(Number(aValue)) && !isNaN(Number(bValue));
       
@@ -265,17 +304,20 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           : Number(bValue) - Number(aValue);
       }
       
-      if (aValue < bValue) {
+      const aStr = String(aValue || '');
+      const bStr = String(bValue || '');
+      
+      if (aStr < bStr) {
         return sortConfig.direction === 'asc' ? -1 : 1;
       }
-      if (aValue > bValue) {
+      if (aStr > bStr) {
         return sortConfig.direction === 'asc' ? 1 : -1;
       }
       return 0;
     });
   }, [filteredGroups, sortConfig]);
 
-  // Pagination
+  // Pagination - memoized for performance
   const paginatedGroups = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return sortedGroups.slice(startIndex, startIndex + pageSize);
@@ -461,6 +503,96 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     
     return String(value);
   };
+
+  // Render individual row - extracted for performance
+  const renderTableRow = (group: GroupedDataItem, isChild: boolean = false) => (
+    <TableRow 
+      key={`row-${group.key}`}
+      className={cn(
+        isChild ? "hover:bg-gray-50/50 border-t border-gray-100/50 bg-gray-50/20" : 
+        "cursor-pointer hover:bg-primary/5 transition-colors duration-200",
+        !isChild && expandedRows[group.key] && "bg-primary/10"
+      )}
+      onClick={!isChild ? () => toggleRowExpansion(group.key) : undefined}
+      style={{ height: `${rowHeight}px` }}
+    >
+      {tableView === "grouped" && groupBy !== "none" && !isChild && (
+        <TableCell className="py-2 relative">
+          <motion.div
+            initial={{ rotate: 0 }}
+            animate={{ rotate: expandedRows[group.key] ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
+          >
+            <ChevronRight className="h-4 w-4 text-primary" />
+          </motion.div>
+        </TableCell>
+      )}
+      
+      {isChild && tableView === "grouped" && groupBy !== "none" && (
+        <TableCell className="py-1">
+          <div className="w-4"></div>
+        </TableCell>
+      )}
+      
+      {visibleColumns.map(column => {
+        if (column.key === 'teacherName') {
+          return (
+            <TableCell key={column.key} className={cn(
+              isChild ? "py-1" : "py-2", 
+              "text-left"
+            )}>
+              <div className="flex items-center gap-2">
+                <Avatar className={isChild ? "h-5 w-5" : "h-6 w-6 ring-2 ring-primary/20"}>
+                  <AvatarImage src={trainerAvatars[group.teacherName]} />
+                  <AvatarFallback className={cn(
+                    isChild ? "bg-primary/10 text-primary text-xs" : "bg-primary/20 text-primary"
+                  )}>
+                    {group.teacherName?.charAt(0) || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <span className={isChild ? "text-sm" : ""}>{group.teacherName}</span>
+              </div>
+            </TableCell>
+          );
+        }
+        
+        if (column.key === 'cleanedClass' && tableView === 'grouped' && !isChild) {
+          return (
+            <TableCell key={column.key} className="py-2 text-left">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary font-normal">
+                  {group.children?.length || 0}
+                </Badge>
+                <span className="font-medium">{group.cleanedClass}</span>
+              </div>
+            </TableCell>
+          );
+        }
+        
+        if (column.key === 'classAverageIncludingEmpty' || column.key === 'classAverageExcludingEmpty') {
+          const value = group[column.key as keyof GroupedDataItem];
+          return (
+            <TableCell key={column.key} className={cn(
+              isChild ? "py-1" : "py-2", 
+              "text-right"
+            )}>
+              {typeof value === 'number' ? value.toFixed(1) : String(value)}
+            </TableCell>
+          );
+        }
+        
+        return (
+          <TableCell key={column.key} className={cn(
+            isChild ? "py-1" : "py-2", 
+            column.numeric ? "text-right" : "text-left"
+          )}>
+            {formatCellValue(column.key, group[column.key as keyof GroupedDataItem])}
+          </TableCell>
+        );
+      })}
+    </TableRow>
+  );
   
   return (
     <div className="p-6">
@@ -655,19 +787,20 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
             </TableHeader>
             <TableBody>
               {paginatedGroups.length > 0 ? (
-                paginatedGroups.map((group: any) => (
+                paginatedGroups.map((group: GroupedDataItem) => (
                   <React.Fragment key={group.key}>
-                    {/* Only show parent rows in grouped mode, not in flat mode */}
-                    {tableView === "grouped" && !group.isChild && (
+                    {/* Parent rows for grouped mode, or all rows for flat mode */}
+                    {(tableView === "flat" || (tableView === "grouped" && !group.isChild)) && (
                       <motion.tr 
+                        key={`parent-${group.key}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className={cn(
-                          "cursor-pointer hover:bg-primary/5 transition-colors duration-200",
-                          expandedRows[group.key] && "bg-primary/10"
+                          tableView === "flat" ? "hover:bg-gray-50/50" : "cursor-pointer hover:bg-primary/5 transition-colors duration-200",
+                          tableView === "grouped" && expandedRows[group.key] && "bg-primary/10"
                         )}
-                        onClick={() => toggleRowExpansion(group.key)}
+                        onClick={tableView === "grouped" ? () => toggleRowExpansion(group.key) : undefined}
                         style={{ height: `${rowHeight}px` }}
                       >
                         {tableView === "grouped" && groupBy !== "none" && (
@@ -686,14 +819,11 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                         {visibleColumns.map(column => {
                           if (column.key === 'teacherName') {
                             return (
-                              <TableCell key={column.key} className={cn(
-                                "py-2", 
-                                column.numeric ? "text-right" : "text-left"
-                              )}>
+                              <TableCell key={column.key} className="py-2 text-left">
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-6 w-6 ring-2 ring-primary/20">
                                     <AvatarImage src={trainerAvatars[group.teacherName]} />
-                                    <AvatarFallback className="bg-primary/20 text-primary">{group.teacherName?.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback className="bg-primary/20 text-primary">{group.teacherName?.charAt(0) || '?'}</AvatarFallback>
                                   </Avatar>
                                   {group.teacherName}
                                 </div>
@@ -703,10 +833,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                           
                           if (column.key === 'cleanedClass' && tableView === 'grouped') {
                             return (
-                              <TableCell key={column.key} className={cn(
-                                "py-2", 
-                                column.numeric ? "text-right" : "text-left"
-                              )}>
+                              <TableCell key={column.key} className="py-2 text-left">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary font-normal">
                                     {group.children?.length || 0}
@@ -718,13 +845,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                           }
                           
                           if (column.key === 'classAverageIncludingEmpty' || column.key === 'classAverageExcludingEmpty') {
-                            const value = group[column.key];
+                            const value = group[column.key as keyof GroupedDataItem];
                             return (
-                              <TableCell key={column.key} className={cn(
-                                "py-2", 
-                                "text-right"
-                              )}>
-                                {typeof value === 'number' ? value.toFixed(1) : '-'}
+                              <TableCell key={column.key} className="py-2 text-right">
+                                {typeof value === 'number' ? value.toFixed(1) : String(value)}
                               </TableCell>
                             );
                           }
@@ -734,42 +858,34 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                               "py-2", 
                               column.numeric ? "text-right" : "text-left"
                             )}>
-                              {formatCellValue(column.key, group[column.key])}
+                              {formatCellValue(column.key, group[column.key as keyof GroupedDataItem])}
                             </TableCell>
                           );
                         })}
                       </motion.tr>
                     )}
                     
-                    {/* Show individual rows in flat mode or expanded grouped mode */}
-                    {(tableView === "flat" || (tableView === "grouped" && expandedRows[group.key])) && (
-                      <AnimatePresence>
-                        {group.isChild ? [group] : (group.children?.map((child: ProcessedData, index: number) => (
+                    {/* Child rows for expanded grouped mode */}
+                    {tableView === "grouped" && expandedRows[group.key] && group.children && (
+                      <>
+                        {group.children.map((child: ProcessedData, index: number) => (
                           <motion.tr 
-                            key={`${group.key}-child-${index}`}
+                            key={`child-${group.key}-${index}`}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ delay: index * 0.02 }}
-                            className={cn(
-                              "hover:bg-gray-50/50 border-t border-gray-100/50",
-                              tableView === "grouped" && "bg-gray-50/20"
-                            )}
+                            className="hover:bg-gray-50/50 border-t border-gray-100/50 bg-gray-50/20"
                             style={{ height: `${rowHeight}px` }}
                           >
-                            {tableView === "grouped" && groupBy !== "none" && (
-                              <TableCell className="py-1">
-                                <div className="w-4"></div> {/* Spacer for indentation */}
-                              </TableCell>
-                            )}
+                            <TableCell className="py-1">
+                              <div className="w-4"></div>
+                            </TableCell>
                             
                             {visibleColumns.map(column => {
                               if (column.key === 'teacherName') {
                                 return (
-                                  <TableCell key={column.key} className={cn(
-                                    "py-1", 
-                                    "text-left"
-                                  )}>
+                                  <TableCell key={column.key} className="py-1 text-left">
                                     <div className="flex items-center gap-2">
                                       <Avatar className="h-5 w-5">
                                         <AvatarImage src={trainerAvatars[child.teacherName || '']} />
@@ -781,13 +897,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                                 );
                               }
 
-                              // Display individual values for the child rows, not aggregated ones
-                              let childValue = child[column.key as keyof ProcessedData];
-                              
-                              // Special handling for numeric fields to ensure proper value display
-                              if (column.numeric && column.key in child) {
-                                childValue = child[column.key as keyof ProcessedData];
-                              }
+                              const childValue = child[column.key as keyof ProcessedData];
                               
                               return (
                                 <TableCell key={column.key} className={cn(
@@ -799,8 +909,8 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                               );
                             })}
                           </motion.tr>
-                        )))}
-                      </AnimatePresence>
+                        ))}
+                      </>
                     )}
                   </React.Fragment>
                 ))
@@ -866,4 +976,3 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     </div>
   );
 }
-
