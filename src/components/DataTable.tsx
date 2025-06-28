@@ -595,7 +595,7 @@ export function DataTable({
     return String(value);
   };
   return <div className="p-6 bg-gradient-to-br from-slate-50 to-white min-h-screen">
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-6 mb-6 shadow-xl">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-6 mb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <motion.div animate={{
@@ -623,13 +623,13 @@ export function DataTable({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between mb-6 gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg">
+      <div className="flex flex-wrap items-center justify-between mb-2 gap-4 bg-white/80 backdrop-blur-sm p-4 shadow-lg rounded-sm">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={searchTerm} onChange={handleSearchChange} placeholder="Search classes, trainers, locations..." className="pl-9 w-96 bg-white shadow-md border-0 focus:ring-2 focus:ring-primary/20" />
+          <Input value={searchTerm} onChange={handleSearchChange} placeholder="Search classes, trainers, locations..." className="shadow-md border-0 focus:ring-2 focus:ring-primary/20" />
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-10">
           <Select value={groupBy} onValueChange={setGroupBy}>
             <SelectTrigger className="w-[200px] bg-white shadow-md border-0">
               <div className="flex items-center gap-2">
@@ -782,7 +782,7 @@ export function DataTable({
                                   <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary font-medium px-2 py-1">
                                     {group.children?.length || 0}
                                   </Badge>
-                                  <span className="font-semibold text-slate-800">{group.cleanedClass}</span>
+                                  <span className="font-semibold text-slate-800 min-w-52 text-left">{group.cleanedClass}</span>
                                 </div>
                               </TableCell>;
                   }
