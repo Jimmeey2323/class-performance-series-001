@@ -37,7 +37,10 @@ const SimpleDataFilters: React.FC<SimpleDataFiltersProps> = ({
   const [activeTab, setActiveTab] = useState<'filters' | 'sort' | 'advanced'>('filters');
   const [activeFiltersList, setActiveFiltersList] = useState<FilterOption[]>([]);
   const [activeSorts, setActiveSorts] = useState<SortOption[]>([]);
-  const [valueRanges, setValueRanges] = useState(false);
+  const [valueRanges, setValueRanges] = useState({
+    checkins: [0, 50] as [number, number],
+    revenue: [0, 10000] as [number, number]
+  });
 
   // Extract filter options from data
   const classTypes = React.useMemo(() => {
