@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ProcessedData } from '@/types/data';
 import { 
@@ -47,7 +46,7 @@ interface ColumnDefinition {
 interface GroupedDataItem {
   key: string;
   teacherName: string;
-  teacherEmail: string;
+  teacherEmail: string; // Made required
   cleanedClass: string;
   dayOfWeek: string;
   classTime: string;
@@ -116,6 +115,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       return data.map((item, index) => ({
         ...item,
         key: `flat-${item.uniqueID || index}`,
+        teacherEmail: item.teacherEmail || '', // Ensure teacherEmail is always a string
         isChild: true,
         children: [],
         totalEmpty: item.totalCheckins === 0 ? 1 : 0,
@@ -171,7 +171,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         groups[groupKey] = {
           key: groupKey,
           teacherName: item.teacherName || '',
-          teacherEmail: item.teacherEmail || '',
+          teacherEmail: item.teacherEmail || '', // Ensure it's always a string
           cleanedClass: item.cleanedClass || '',
           dayOfWeek: item.dayOfWeek || '',
           classTime: item.classTime || '',
