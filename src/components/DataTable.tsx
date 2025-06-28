@@ -61,8 +61,8 @@ interface GroupedDataItem {
   totalEmpty: number;
   totalNonEmpty: number;
   totalNonPaid: number;
-  totalPayout?: number;
-  totalTips?: number;
+  totalPayout: number;
+  totalTips: number;
   classAverageIncludingEmpty: number | string;
   classAverageExcludingEmpty: number | string;
   isChild?: boolean;
@@ -95,11 +95,9 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
   const [rowHeight, setRowHeight] = useState(35);
   const [expandAllGroups, setExpandAllGroups] = useState(false);
 
-  // Auto expand/collapse all rows when toggle is changed
   useEffect(() => {
     if (tableView === "grouped") {
       const newExpandedState: Record<string, boolean> = {};
-      // Get current grouped data keys to set expansion state
       const currentKeys = groupedData.map((group: GroupedDataItem) => group.key);
       currentKeys.forEach((key: string) => {
         newExpandedState[key] = expandAllGroups;
@@ -118,15 +116,28 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     // If flat mode is activated, return data as individual items
     if (tableView === "flat") {
       return filteredData.map((item, index) => ({
-        ...item,
         key: `flat-${item.uniqueID || index}`,
+        teacherName: item.teacherName || '',
         teacherEmail: item.teacherEmail || '',
+        cleanedClass: item.cleanedClass || '',
+        dayOfWeek: item.dayOfWeek || '',
+        classTime: item.classTime || '',
+        location: item.location || '',
+        period: item.period || '',
+        date: item.date || '',
         totalRevenue: typeof item.totalRevenue === 'string' ? parseFloat(item.totalRevenue) || 0 : item.totalRevenue || 0,
-        isChild: true,
-        children: [],
+        totalCheckins: Number(item.totalCheckins || 0),
+        totalOccurrences: 1,
+        totalCancelled: Number(item.totalCancelled || 0),
         totalEmpty: item.totalCheckins === 0 ? 1 : 0,
         totalNonEmpty: item.totalCheckins > 0 ? 1 : 0,
-        totalNonPaid: item.totalNonPaid || 0,
+        totalNonPaid: Number(item.totalNonPaid || 0),
+        totalPayout: Number(item.totalPayout || 0),
+        totalTips: Number(item.totalTips || 0),
+        classAverageIncludingEmpty: Number(item.classAverageIncludingEmpty || 0),
+        classAverageExcludingEmpty: item.classAverageExcludingEmpty || 0,
+        isChild: true,
+        children: []
       }));
     }
     
@@ -211,8 +222,8 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       groups[groupKey].totalEmpty += (Number(item.totalCheckins || 0) === 0 ? 1 : 0);
       groups[groupKey].totalNonEmpty += (Number(item.totalCheckins || 0) > 0 ? 1 : 0);
       groups[groupKey].totalNonPaid += Number(item.totalNonPaid || 0);
-      if (item.totalPayout) groups[groupKey].totalPayout! += Number(item.totalPayout);
-      if (item.totalTips) groups[groupKey].totalTips! += Number(item.totalTips);
+      groups[groupKey].totalPayout += Number(item.totalPayout || 0);
+      groups[groupKey].totalTips += Number(item.totalTips || 0);
     });
     
     // Calculate averages for each group
@@ -229,7 +240,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     return Object.values(groups);
   }, [filteredData, groupBy, tableView]);
 
-  // Define grouping options
   const groupingOptions = [
     { id: "class-day-time-location-trainer", label: "Class + Day + Time + Location + Trainer" },
     { id: "class-day-time-location", label: "Class + Day + Time + Location" },
@@ -244,7 +254,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     { id: "none", label: "No Grouping" }
   ];
   
-  // Define view modes
   const viewModes = [
     { id: "default", label: "Default View" },
     { id: "compact", label: "Compact View" },
@@ -256,21 +265,18 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     { id: "all", label: "All Columns" }
   ];
 
-  // Filter the grouped data based on search term - memoized for performance
   const filteredGroups = useMemo(() => {
     if (!searchTerm) return groupedData;
     
     const searchLower = searchTerm.toLowerCase();
     
     return groupedData.filter((group: GroupedDataItem) => {
-      // For flat view, search in all properties
       if (tableView === "flat") {
         return Object.values(group).some(val => 
           val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
         );
       }
       
-      // For grouped view, search in parent row and children
       const parentMatch = [
         group.teacherName,
         group.cleanedClass,
@@ -282,7 +288,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       
       if (parentMatch) return true;
       
-      // Search in child rows
       if (group.children && group.children.length > 0) {
         return group.children.some((child: ProcessedData) => 
           Object.values(child).some(val => 
@@ -295,7 +300,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     });
   }, [groupedData, searchTerm, tableView]);
 
-  // Apply sorting - memoized for performance
   const sortedGroups = useMemo(() => {
     if (!sortConfig) return filteredGroups;
     
@@ -324,13 +328,11 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     });
   }, [filteredGroups, sortConfig]);
 
-  // Pagination - memoized for performance
   const paginatedGroups = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return sortedGroups.slice(startIndex, startIndex + pageSize);
   }, [sortedGroups, currentPage, pageSize]);
 
-  // Get columns based on view mode
   const getColumns = (): ColumnDefinition[] => {
     const baseColumns: ColumnDefinition[] = [
       { key: "cleanedClass", label: "Class Type", iconComponent: <ListChecks className="h-4 w-4" />, numeric: false, currency: false, visible: true },
@@ -393,12 +395,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
 
   const columns = getColumns();
   
-  // Filter columns based on visibility settings
   const visibleColumns = columns.filter(col => 
     columnVisibility[col.key] !== false
   );
 
-  // Toggle row expansion
   const toggleRowExpansion = (key: string) => {
     setExpandedRows(prev => ({
       ...prev,
@@ -406,7 +406,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     }));
   };
   
-  // Toggle column visibility
   const toggleColumnVisibility = (column: string) => {
     setColumnVisibility(prev => ({
       ...prev,
@@ -414,13 +413,11 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     }));
   };
   
-  // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
   
-  // Handle sort request
   const requestSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
@@ -429,7 +426,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     setSortConfig({ key, direction });
   };
 
-  // Get sort indicator for column headers
   const getSortIndicator = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) {
       return null;
@@ -437,17 +433,14 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     return sortConfig.direction === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
   };
   
-  // Navigate to specific page
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
   };
   
-  // Calculate total pages
   const totalPages = Math.ceil(sortedGroups.length / pageSize);
   
-  // Reset column visibility
   const resetColumnVisibility = () => {
     setColumnVisibility({
       teacherName: true,
@@ -466,7 +459,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     });
   };
 
-  // Export data as CSV
   const exportCSV = () => {
     const headers = Object.keys(filteredData[0] || {}).filter(key => key !== 'children' && key !== 'key');
     const csvRows = [headers.join(',')];
@@ -490,7 +482,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     document.body.removeChild(link);
   };
   
-  // Format cell values
   const formatCellValue = (key: string, value: any) => {
     if (value === undefined || value === null) return "-";
     
@@ -513,7 +504,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
 
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-white min-h-screen">
-      {/* Modern Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-6 mb-6 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -540,7 +530,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         </div>
       </div>
 
-      {/* Enhanced Controls */}
       <div className="flex flex-wrap items-center justify-between mb-6 gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-lg">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -693,7 +682,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         </div>
       </div>
       
-      {/* Modern Table */}
       <div className="border-0 rounded-xl overflow-hidden bg-white shadow-2xl">
         <div className="overflow-x-auto">
           <Table>
@@ -732,7 +720,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
               {paginatedGroups.length > 0 ? (
                 paginatedGroups.map((group: GroupedDataItem) => (
                   <React.Fragment key={group.key}>
-                    {/* Parent rows for grouped mode, or all rows for flat mode */}
                     {(tableView === "flat" || (tableView === "grouped" && !group.isChild)) && (
                       <TableRow 
                         key={`parent-${group.key}`}
@@ -802,7 +789,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                       </TableRow>
                     )}
                     
-                    {/* Child rows for expanded grouped mode */}
                     <AnimatePresence>
                       {tableView === "grouped" && expandedRows[group.key] && group.children && (
                         <>
@@ -872,7 +858,6 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           </Table>
         </div>
         
-        {/* Enhanced Pagination */}
         {sortedGroups.length > pageSize && (
           <div className="py-6 bg-gradient-to-r from-slate-50 to-white border-t border-slate-100">
             <div className="flex items-center justify-between px-6">

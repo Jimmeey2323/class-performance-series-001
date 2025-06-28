@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ProcessedData, ViewMode, FilterOption, SortOption } from '@/types/data';
 import ViewSwitcherWrapper from './ViewSwitcherWrapper';
@@ -386,7 +385,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         >
           <Card className="lg:col-span-3 bg-white/90 backdrop-blur-sm shadow-lg border-none rounded-xl overflow-hidden">
             <CardContent className="p-6">
-              <TopBottomClasses data={filteredData} />
+              <TopBottomClasses data={filteredData} trainerAvatars={trainerAvatars} />
             </CardContent>
           </Card>
         </motion.div>
