@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { ProcessedData } from '@/types/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +29,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Badge } from './ui/badge';
 
 interface TrainerComparisonViewProps {
@@ -192,7 +191,7 @@ const TrainerComparisonView: React.FC<TrainerComparisonViewProps> = ({ data, tra
     return value.toString();
   };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
@@ -202,13 +201,13 @@ const TrainerComparisonView: React.FC<TrainerComparisonViewProps> = ({ data, tra
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { y: 20, opacity: 0 },
     visible: { 
       y: 0, 
       opacity: 1,
       transition: {
-        type: 'spring',
+        type: 'spring' as const,
         stiffness: 100
       }
     }

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { formatIndianCurrency } from '@/components/MetricsPanel';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Calendar, Clock, MapPin } from 'lucide-react';
 
 interface TimelineViewProps {
@@ -157,7 +157,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ data, trainerAvatars }) => 
   }, [groupedData]);
 
   // Animation variants
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -167,26 +167,26 @@ const TimelineView: React.FC<TimelineViewProps> = ({ data, trainerAvatars }) => 
     }
   };
   
-  const periodVariants = {
+  const periodVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
+        type: 'spring' as const,
         stiffness: 100,
         staggerChildren: 0.05
       }
     }
   };
   
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
-        type: "spring",
+        type: 'spring' as const,
         stiffness: 120
       }
     }
