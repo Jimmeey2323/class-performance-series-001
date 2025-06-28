@@ -777,12 +777,12 @@ export function DataTable({
                               </TableCell>;
                   }
                   if (column.key === 'cleanedClass' && tableView === 'grouped') {
-                    return <TableCell key={column.key} className="py-3 px-6 text-left">
+                    return <TableCell key={column.key} className="py-1 px-1 text-left">
                                 <div className="flex items-center gap-3">
-                                  <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary font-medium px-2 py-1">
+                                  <Badge variant="outline" className="bg-pink-600 min-w-10 border-white text-white text-center font-extrabold py-1 px-[12px] mx-0 inline-block rounded-sm">
                                     {group.children?.length || 0}
                                   </Badge>
-                                  <span className="font-semibold text-slate-800 min-w-52 text-left text-indigo-600">{group.cleanedClass}</span>
+                                  <span className="font-semibold text-slate-800 min-w-56 text-left text-indigo-600">{group.cleanedClass}</span>
                                 </div>
                               </TableCell>;
                   }
