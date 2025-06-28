@@ -333,28 +333,28 @@ export function DataTable({
     const baseColumns: ColumnDefinition[] = [{
       key: "cleanedClass",
       label: "Class Type",
-      iconComponent: <ListChecks className="h-4 w-4" />,
+      iconComponent: <ListChecks className="h-4 w-4 text-gray-300" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "dayOfWeek",
       label: "Day",
-      iconComponent: <Calendar className="h-4 w-4" />,
+      iconComponent: <Calendar className="h-4 w-4 text-gray-300" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "classTime",
       label: "Time",
-      iconComponent: <Clock className="h-4 w-4" />,
+      iconComponent: <Clock className="h-4 w-4 text-gray-300" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "location",
       label: "Location",
-      iconComponent: <MapPin className="h-4 w-4" />,
+      iconComponent: <MapPin className="h-4 w-4 text-gray-300" />,
       numeric: false,
       currency: false,
       visible: true
@@ -364,28 +364,28 @@ export function DataTable({
       label: "Classes",
       numeric: true,
       currency: false,
-      iconComponent: <ListFilter className="h-4 w-4" />,
+      iconComponent: <ListFilter className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "totalEmpty",
       label: "Empty",
       numeric: true,
       currency: false,
-      iconComponent: <ListFilter className="h-4 w-4" />,
+      iconComponent: <ListFilter className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "totalNonEmpty",
       label: "Non-empty",
       numeric: true,
       currency: false,
-      iconComponent: <ListFilter className="h-4 w-4" />,
+      iconComponent: <ListFilter className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "totalCheckins",
       label: "Checked In",
       numeric: true,
       currency: false,
-      iconComponent: <ListChecks className="h-4 w-4" />,
+      iconComponent: <ListChecks className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "classAverageIncludingEmpty",
@@ -407,7 +407,7 @@ export function DataTable({
       label: "Revenue",
       numeric: true,
       currency: true,
-      iconComponent: <IndianRupee className="h-4 w-4" />,
+      iconComponent: <IndianRupee className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "totalCancelled",
@@ -734,8 +734,8 @@ export function DataTable({
           <Table>
             <TableHeader className="bg-gradient-to-r from-slate-100 to-slate-50 sticky top-0 z-10">
               <TableRow className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 px-4 py-2">
-                {tableView === "grouped" && groupBy !== "none" && <TableHead className="w-[50px] bg-gradient-to-r from-slate-100 to-slate-50 text-center"></TableHead>}
-                {visibleColumns.map(column => <TableHead key={column.key} className={cn("py-4 px-6 bg-gradient-to-r from-slate-100 to-slate-50 transition-all hover:bg-slate-200/50 cursor-pointer font-semibold text-slate-700", column.numeric ? "text-center" : "text-left")} onClick={() => requestSort(column.key)}>
+                {tableView === "grouped" && groupBy !== "none" && <TableHead className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 px-4 py-2"></TableHead>}
+                {visibleColumns.map(column => <TableHead key={column.key} onClick={() => requestSort(column.key)} className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 px-4 py-2">
                     <div className={cn("flex items-center gap-2 font-medium", column.numeric ? "justify-center" : "justify-start")}>
                       {!column.numeric && column.iconComponent && <span className="text-primary/70">{column.iconComponent}</span>}
                       <span className="text-sm font-semibold tracking-wide">{column.label}</span>
@@ -750,7 +750,7 @@ export function DataTable({
                     {(tableView === "flat" || tableView === "grouped" && !group.isChild) && <TableRow key={`parent-${group.key}`} className={cn("border-b border-slate-100 transition-all duration-200", tableView === "flat" ? "hover:bg-slate-50/80" : "cursor-pointer hover:bg-primary/5", tableView === "grouped" && expandedRows[group.key] && "bg-primary/10")} onClick={tableView === "grouped" ? () => toggleRowExpansion(group.key) : undefined} style={{
                 height: `${rowHeight}px`
               }}>
-                        {tableView === "grouped" && groupBy !== "none" && <TableCell className="py-3 text-center">
+                        {tableView === "grouped" && groupBy !== "none" && <TableCell className="py-3 text-center px-4 font-extrabold">
                             <motion.div initial={{
                     rotate: 0
                   }} animate={{
@@ -758,7 +758,7 @@ export function DataTable({
                   }} transition={{
                     duration: 0.2
                   }}>
-                              <ChevronRight className="h-4 w-4 text-primary mx-auto" />
+                              <ChevronRight className="h-4 w-4 text-primary mx-auto font-extrabold" />
                             </motion.div>
                           </TableCell>}
                         
@@ -782,7 +782,7 @@ export function DataTable({
                                   <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary font-medium px-2 py-1">
                                     {group.children?.length || 0}
                                   </Badge>
-                                  <span className="font-semibold text-slate-800 min-w-52 text-left">{group.cleanedClass}</span>
+                                  <span className="font-semibold text-slate-800 min-w-52 text-left text-indigo-600">{group.cleanedClass}</span>
                                 </div>
                               </TableCell>;
                   }
@@ -809,7 +809,7 @@ export function DataTable({
                     delay: index * 0.02
                   }} className="bg-slate-50/50 border-b border-slate-100/50 hover:bg-slate-100/50">
                               <TableCell className="py-2 text-center">
-                                <div className="w-4 h-4 bg-slate-300/50 rounded-full mx-auto"></div>
+                                <div className="w-2 h-2 bg-indigo-600/100 rounded-full mx-auto"></div>
                               </TableCell>
                               
                               {visibleColumns.map(column => {
