@@ -626,7 +626,7 @@ export function DataTable({
       <div className="flex flex-wrap items-center justify-between mb-2 gap-4 bg-white/80 backdrop-blur-sm p-4 shadow-lg rounded-sm">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={searchTerm} onChange={handleSearchChange} placeholder="Search classes, trainers, locations..." className="shadow-md border-0 focus:ring-2 focus:ring-primary/20" />
+          <Input value={searchTerm} onChange={handleSearchChange} placeholder="Search classes, trainers, locations..." className="shadow-md min-w-[400px] pl-12 text-right" />
         </div>
         
         <div className="flex flex-wrap gap-10">
