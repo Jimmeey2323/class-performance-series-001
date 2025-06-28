@@ -46,7 +46,7 @@ interface ColumnDefinition {
 interface GroupedDataItem {
   key: string;
   teacherName: string;
-  teacherEmail: string; // Made required
+  teacherEmail: string; // Required field
   cleanedClass: string;
   dayOfWeek: string;
   classTime: string;
@@ -55,7 +55,7 @@ interface GroupedDataItem {
   date: string;
   children: ProcessedData[];
   totalCheckins: number;
-  totalRevenue: number;
+  totalRevenue: number; // Always number
   totalOccurrences: number;
   totalCancelled: number;
   totalEmpty: number;
@@ -94,6 +94,7 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
   const [tableView, setTableView] = useState("grouped");
   const [rowHeight, setRowHeight] = useState(35);
   const [expandAllGroups, setExpandAllGroups] = useState(false);
+  const [classesFilter, setClassesFilter] = useState<[number, number]>([1, 50]);
 
   // Auto expand/collapse all rows when toggle is changed
   useEffect(() => {
@@ -110,12 +111,18 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
 
   // Group data by selected grouping option - memoized for performance
   const groupedData = useMemo((): GroupedDataItem[] => {
+    // Filter out "Hosted" classes first
+    const filteredData = data.filter(item => 
+      !item.cleanedClass?.toLowerCase().includes('hosted')
+    );
+
     // If flat mode is activated, return data as individual items
     if (tableView === "flat") {
-      return data.map((item, index) => ({
+      return filteredData.map((item, index) => ({
         ...item,
         key: `flat-${item.uniqueID || index}`,
         teacherEmail: item.teacherEmail || '', // Ensure teacherEmail is always a string
+        totalRevenue: typeof item.totalRevenue === 'string' ? parseFloat(item.totalRevenue) || 0 : item.totalRevenue || 0,
         isChild: true,
         children: [],
         totalEmpty: item.totalCheckins === 0 ? 1 : 0,
@@ -144,6 +151,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           return `${item.location}`;
         case "trainer":
           return `${item.teacherName}`;
+        case "trainer-location":
+          return `${item.teacherName}|${item.location}`;
+        case "trainer-class":
+          return `${item.teacherName}|${item.cleanedClass}`;
         case "month": {
           const dateStr = item.date;
           if (dateStr) {
@@ -156,15 +167,28 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           }
           return "Unknown";
         }
+        case "quarter": {
+          const dateStr = item.date;
+          if (dateStr) {
+            try {
+              const date = new Date(dateStr.split(',')[0]);
+              const quarter = Math.floor(date.getMonth() / 3) + 1;
+              return `Q${quarter} ${date.getFullYear()}`;
+            } catch {
+              return "Unknown";
+            }
+          }
+          return "Unknown";
+        }
         case "none":
         default:
-          return `row-${data.indexOf(item)}`;
+          return `row-${filteredData.indexOf(item)}`;
       }
     };
     
     const groups: Record<string, GroupedDataItem> = {};
     
-    data.forEach(item => {
+    filteredData.forEach(item => {
       const groupKey = getGroupKey(item);
       
       if (!groups[groupKey]) {
@@ -198,7 +222,8 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       
       // Update metrics for group aggregation
       groups[groupKey].totalCheckins += Number(item.totalCheckins || 0);
-      groups[groupKey].totalRevenue += Number(item.totalRevenue || 0);
+      const revenueValue = typeof item.totalRevenue === 'string' ? parseFloat(item.totalRevenue) || 0 : item.totalRevenue || 0;
+      groups[groupKey].totalRevenue += revenueValue;
       groups[groupKey].totalOccurrences += 1;
       groups[groupKey].totalCancelled += Number(item.totalCancelled || 0);
       groups[groupKey].totalEmpty += (Number(item.totalCheckins || 0) === 0 ? 1 : 0);
@@ -208,8 +233,13 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
       if (item.totalTips) groups[groupKey].totalTips! += Number(item.totalTips);
     });
     
-    // Calculate averages for each group
-    Object.values(groups).forEach((group: GroupedDataItem) => {
+    // Calculate averages for each group and filter by classes count
+    const filteredGroups = Object.values(groups).filter((group: GroupedDataItem) => {
+      const classCount = group.totalOccurrences;
+      return classCount >= classesFilter[0] && classCount <= classesFilter[1];
+    });
+
+    filteredGroups.forEach((group: GroupedDataItem) => {
       group.classAverageIncludingEmpty = group.totalOccurrences > 0 
         ? Number((group.totalCheckins / group.totalOccurrences).toFixed(1))
         : 0;
@@ -219,8 +249,8 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         : 'N/A';
     });
     
-    return Object.values(groups);
-  }, [data, groupBy, tableView]);
+    return filteredGroups;
+  }, [data, groupBy, tableView, classesFilter]);
   
   // Define grouping options
   const groupingOptions = [
@@ -233,7 +263,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     { id: "day-time", label: "Day + Time" },
     { id: "location", label: "Location" },
     { id: "trainer", label: "Trainer" },
+    { id: "trainer-location", label: "Trainer + Location" },
+    { id: "trainer-class", label: "Trainer + Class" },
     { id: "month", label: "Month" },
+    { id: "quarter", label: "Quarter" },
     { id: "none", label: "No Grouping" }
   ];
   
@@ -246,6 +279,8 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     { id: "attendance", label: "Attendance Focus" },
     { id: "trainer", label: "Trainer Focus" },
     { id: "analytics", label: "Analytics View" },
+    { id: "performance", label: "Performance View" },
+    { id: "revenue", label: "Revenue View" },
     { id: "all", label: "All Columns" }
   ];
 
@@ -372,6 +407,10 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
         return [detailedColumns[0], ...baseColumns.slice(0, 3), attendanceColumns[3], financialColumns[0]];
       case "analytics":
         return [...baseColumns.slice(0, 3), attendanceColumns[4], attendanceColumns[5], financialColumns[0]];
+      case "performance":
+        return [...baseColumns.slice(0, 3), attendanceColumns[3], attendanceColumns[4], financialColumns[1]];
+      case "revenue":
+        return [...baseColumns.slice(0, 3), financialColumns[0], attendanceColumns[3], attendanceColumns[4]];
       case "all":
         return [
           ...detailedColumns,
@@ -504,281 +543,234 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
     return String(value);
   };
 
-  // Render individual row - extracted for performance
-  const renderTableRow = (group: GroupedDataItem, isChild: boolean = false) => (
-    <TableRow 
-      key={`row-${group.key}`}
-      className={cn(
-        isChild ? "hover:bg-gray-50/50 border-t border-gray-100/50 bg-gray-50/20" : 
-        "cursor-pointer hover:bg-primary/5 transition-colors duration-200",
-        !isChild && expandedRows[group.key] && "bg-primary/10"
-      )}
-      onClick={!isChild ? () => toggleRowExpansion(group.key) : undefined}
-      style={{ height: `${rowHeight}px` }}
-    >
-      {tableView === "grouped" && groupBy !== "none" && !isChild && (
-        <TableCell className="py-2 relative">
-          <motion.div
-            initial={{ rotate: 0 }}
-            animate={{ rotate: expandedRows[group.key] ? 90 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
-          >
-            <ChevronRight className="h-4 w-4 text-primary" />
-          </motion.div>
-        </TableCell>
-      )}
-      
-      {isChild && tableView === "grouped" && groupBy !== "none" && (
-        <TableCell className="py-1">
-          <div className="w-4"></div>
-        </TableCell>
-      )}
-      
-      {visibleColumns.map(column => {
-        if (column.key === 'teacherName') {
-          return (
-            <TableCell key={column.key} className={cn(
-              isChild ? "py-1" : "py-2", 
-              "text-left"
-            )}>
-              <div className="flex items-center gap-2">
-                <Avatar className={isChild ? "h-5 w-5" : "h-6 w-6 ring-2 ring-primary/20"}>
-                  <AvatarImage src={trainerAvatars[group.teacherName]} />
-                  <AvatarFallback className={cn(
-                    isChild ? "bg-primary/10 text-primary text-xs" : "bg-primary/20 text-primary"
-                  )}>
-                    {group.teacherName?.charAt(0) || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <span className={isChild ? "text-sm" : ""}>{group.teacherName}</span>
-              </div>
-            </TableCell>
-          );
-        }
-        
-        if (column.key === 'cleanedClass' && tableView === 'grouped' && !isChild) {
-          return (
-            <TableCell key={column.key} className="py-2 text-left">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary font-normal">
-                  {group.children?.length || 0}
-                </Badge>
-                <span className="font-medium">{group.cleanedClass}</span>
-              </div>
-            </TableCell>
-          );
-        }
-        
-        if (column.key === 'classAverageIncludingEmpty' || column.key === 'classAverageExcludingEmpty') {
-          const value = group[column.key as keyof GroupedDataItem];
-          return (
-            <TableCell key={column.key} className={cn(
-              isChild ? "py-1" : "py-2", 
-              "text-right"
-            )}>
-              {typeof value === 'number' ? value.toFixed(1) : String(value)}
-            </TableCell>
-          );
-        }
-        
-        return (
-          <TableCell key={column.key} className={cn(
-            isChild ? "py-1" : "py-2", 
-            column.numeric ? "text-right" : "text-left"
-          )}>
-            {formatCellValue(column.key, group[column.key as keyof GroupedDataItem])}
-          </TableCell>
-        );
-      })}
-    </TableRow>
-  );
-  
   return (
-    <div className="p-6">
-      <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchTerm}
-            onChange={handleSearchChange}
-            placeholder="Search in table..."
-            className="pl-9 w-full max-w-sm bg-white/80 backdrop-blur-sm shadow-lg transition-all duration-300 focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        
-        <div className="flex flex-wrap gap-3">
-          {/* Grouping Options */}
-          <Select value={groupBy} onValueChange={setGroupBy}>
-            <SelectTrigger className="w-[180px] bg-white/80 backdrop-blur-sm shadow-lg">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <SelectValue placeholder="Group By" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="bg-white/95 backdrop-blur-lg border-none shadow-lg">
-              <SelectGroup>
-                <SelectLabel>Grouping Options</SelectLabel>
-                {groupingOptions.map(option => (
-                  <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          
-          {/* View Mode */}
-          <Select value={viewMode} onValueChange={setViewMode}>
-            <SelectTrigger className="w-[160px] bg-white/80 backdrop-blur-sm shadow-lg">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                <SelectValue placeholder="View Mode" />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="bg-white/95 backdrop-blur-lg border-none shadow-lg">
-              <SelectGroup>
-                <SelectLabel>View Mode</SelectLabel>
-                {viewModes.map(mode => (
-                  <SelectItem key={mode.id} value={mode.id}>{mode.label}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          
-          {/* Table View */}
-          <Tabs value={tableView} onValueChange={setTableView} className="w-[180px]">
-            <TabsList className="grid w-full grid-cols-2 bg-white/80 shadow-lg">
-              <TabsTrigger value="grouped" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Grouped</TabsTrigger>
-              <TabsTrigger value="flat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Flat</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          {tableView === "grouped" && (
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="expand-all" 
-                checked={expandAllGroups}
-                onCheckedChange={setExpandAllGroups}
-                className="data-[state=checked]:bg-primary" 
-              />
-              <Label htmlFor="expand-all">Expand All</Label>
+    <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-100 min-h-screen">
+      {/* Modern Header with Animated Icon */}
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 rounded-2xl p-6 shadow-2xl">
+          <div className="flex items-center gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="p-3 bg-white/20 rounded-xl backdrop-blur-sm"
+            >
+              <BarChart3 className="h-8 w-8 text-white" />
+            </motion.div>
+            <div>
+              <h1 className="text-3xl font-bold text-white tracking-tight">
+                Performance Analytics
+              </h1>
+              <p className="text-slate-300 font-medium">
+                Comprehensive data insights and performance metrics
+              </p>
             </div>
-          )}
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Filter Section */}
+      <div className="mb-6 p-6 bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20">
+        <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Search in table..."
+              className="pl-9 w-full max-w-sm bg-white/90 backdrop-blur-sm shadow-lg transition-all duration-300 focus:ring-2 focus:ring-primary/30 border-primary/20"
+            />
+          </div>
           
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Customize Table</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-white/95 backdrop-blur-xl max-w-2xl shadow-2xl border-none">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Table Customization</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6 mt-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-lg">Visible Columns</h4>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={resetColumnVisibility}
-                    className="text-xs hover:bg-primary/10"
-                  >
-                    Reset
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2">
-                  {columns.map(col => (
-                    <div key={col.key} className="flex items-center space-x-2 bg-white/70 p-2 rounded-lg shadow-sm hover:shadow-md hover:bg-white/90 transition-all duration-300">
-                      <Checkbox 
-                        id={`column-${col.key}`} 
-                        checked={columnVisibility[col.key] !== false} 
-                        onCheckedChange={() => toggleColumnVisibility(col.key)}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                      <Label htmlFor={`column-${col.key}`} className="flex items-center gap-1.5 cursor-pointer">
-                        {col.iconComponent && (
-                          <span className="text-primary/70">{col.iconComponent}</span>
-                        )}
-                        {col.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="bg-white/70 p-4 rounded-lg shadow-sm">
-                  <h4 className="font-medium mb-2">Row Height: {rowHeight}px</h4>
-                  <Slider
-                    value={[rowHeight]}
-                    min={25}
-                    max={50}
-                    step={1}
-                    onValueChange={values => setRowHeight(values[0])}
-                    className="py-4"
-                  />
-                </div>
-                
-                <div className="bg-white/70 p-4 rounded-lg shadow-sm">
-                  <h4 className="font-medium mb-4">Items per page</h4>
-                  <RadioGroup value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-                    <div className="flex items-center space-x-6">
-                      {[5, 10, 25, 50].map(size => (
-                        <div key={size} className="flex items-center space-x-2">
-                          <RadioGroupItem value={size.toString()} id={`page-${size}`} className="text-primary" />
-                          <Label htmlFor={`page-${size}`}>{size}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </RadioGroup>
-                </div>
+          <div className="flex flex-wrap gap-3">
+            {/* Number of Classes Filter */}
+            <div className="flex items-center gap-2 p-3 bg-white/90 rounded-xl shadow-lg border border-primary/20">
+              <Label className="text-sm font-medium">Classes:</Label>
+              <div className="flex items-center gap-2 min-w-[120px]">
+                <span className="text-xs text-muted-foreground">{classesFilter[0]}</span>
+                <Slider
+                  value={classesFilter}
+                  onValueChange={setClassesFilter}
+                  max={50}
+                  min={1}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground">{classesFilter[1]}</span>
               </div>
-            </DialogContent>
-          </Dialog>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={exportCSV}
-            className="bg-white/80 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+            </div>
+
+            {/* Grouping Options */}
+            <Select value={groupBy} onValueChange={setGroupBy}>
+              <SelectTrigger className="w-[200px] bg-white/90 backdrop-blur-sm shadow-lg border-primary/20">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-primary" />
+                  <SelectValue placeholder="Group By" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white/95 backdrop-blur-lg border-none shadow-xl">
+                <SelectGroup>
+                  <SelectLabel className="text-primary font-semibold">Grouping Options</SelectLabel>
+                  {groupingOptions.map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            {/* View Mode */}
+            <Select value={viewMode} onValueChange={setViewMode}>
+              <SelectTrigger className="w-[160px] bg-white/90 backdrop-blur-sm shadow-lg border-primary/20">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-primary" />
+                  <SelectValue placeholder="View Mode" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-white/95 backdrop-blur-lg border-none shadow-xl">
+                <SelectGroup>
+                  <SelectLabel className="text-primary font-semibold">View Mode</SelectLabel>
+                  {viewModes.map(mode => (
+                    <SelectItem key={mode.id} value={mode.id}>{mode.label}</SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            {/* Table View */}
+            <Tabs value={tableView} onValueChange={setTableView} className="w-[180px]">
+              <TabsList className="grid w-full grid-cols-2 bg-white/90 shadow-lg border border-primary/20">
+                <TabsTrigger value="grouped" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Grouped</TabsTrigger>
+                <TabsTrigger value="flat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Flat</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {tableView === "grouped" && (
+              <div className="flex items-center space-x-2 p-3 bg-white/90 rounded-xl shadow-lg border border-primary/20">
+                <Switch 
+                  id="expand-all" 
+                  checked={expandAllGroups}
+                  onCheckedChange={setExpandAllGroups}
+                  className="data-[state=checked]:bg-primary" 
+                />
+                <Label htmlFor="expand-all" className="font-medium">Expand All</Label>
+              </div>
+            )}
+            
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 border-primary/20"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Customize</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-white/95 backdrop-blur-xl max-w-2xl shadow-2xl border-none">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Table Customization</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 mt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-lg">Visible Columns</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={resetColumnVisibility}
+                      className="text-xs hover:bg-primary/10"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                    {columns.map(col => (
+                      <div key={col.key} className="flex items-center space-x-2 bg-white/70 p-2 rounded-lg shadow-sm hover:shadow-md hover:bg-white/90 transition-all duration-300">
+                        <Checkbox 
+                          id={`column-${col.key}`} 
+                          checked={columnVisibility[col.key] !== false} 
+                          onCheckedChange={() => toggleColumnVisibility(col.key)}
+                          className="data-[state=checked]:bg-primary"
+                        />
+                        <Label htmlFor={`column-${col.key}`} className="flex items-center gap-1.5 cursor-pointer">
+                          {col.iconComponent && (
+                            <span className="text-primary/70">{col.iconComponent}</span>
+                          )}
+                          {col.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="bg-white/70 p-4 rounded-lg shadow-sm">
+                    <h4 className="font-medium mb-2">Row Height: {rowHeight}px</h4>
+                    <Slider
+                      value={[rowHeight]}
+                      min={25}
+                      max={60}
+                      step={1}
+                      onValueChange={values => setRowHeight(values[0])}
+                      className="py-4"
+                    />
+                  </div>
+                  
+                  <div className="bg-white/70 p-4 rounded-lg shadow-sm">
+                    <h4 className="font-medium mb-4">Items per page</h4>
+                    <RadioGroup value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                      <div className="flex items-center space-x-6">
+                        {[5, 10, 25, 50, 100].map(size => (
+                          <div key={size} className="flex items-center space-x-2">
+                            <RadioGroupItem value={size.toString()} id={`page-${size}`} className="text-primary" />
+                            <Label htmlFor={`page-${size}`}>{size}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportCSV}
+              className="bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 border-primary/20"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
       
-      <div className="border rounded-lg overflow-hidden bg-white/90 backdrop-blur-md shadow-xl">
+      {/* Modern Data Table */}
+      <div className="rounded-2xl overflow-hidden bg-white/90 backdrop-blur-lg shadow-xl border border-white/20">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/70 backdrop-blur-md sticky top-0 z-10">
-              <TableRow className="border-b-2 border-primary/20">
+            <TableHeader className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 sticky top-0 z-10">
+              <TableRow className="border-none hover:bg-transparent">
                 {tableView === "grouped" && groupBy !== "none" && (
-                  <TableHead className="w-[30px] bg-gradient-to-r from-gray-50/70 to-transparent"></TableHead>
+                  <TableHead className="w-[40px] text-center">
+                    <div className="h-6 w-6 mx-auto"></div>
+                  </TableHead>
                 )}
                 {visibleColumns.map(column => (
                   <TableHead 
                     key={column.key}
                     className={cn(
-                      "py-3 px-4 bg-gradient-to-r from-gray-50/70 to-transparent transition-colors hover:bg-gray-100/70",
-                      column.numeric ? "text-right" : "text-left"
+                      "py-4 px-6 text-white font-semibold transition-colors hover:bg-white/10 cursor-pointer",
+                      column.numeric ? "text-center" : "text-left"
                     )}
                     onClick={() => requestSort(column.key)}
                   >
                     <div className={cn(
-                      "flex items-center gap-1.5 cursor-pointer",
-                      column.numeric ? "justify-end" : "justify-start"
+                      "flex items-center gap-2",
+                      column.numeric ? "justify-center" : "justify-start"
                     )}>
-                      {!column.numeric && column.iconComponent && (
-                        <span className="text-primary/70">{column.iconComponent}</span>
+                      {column.iconComponent && (
+                        <span className="text-white/80">{column.iconComponent}</span>
                       )}
-                      <span>{column.label}</span>
-                      {column.numeric && column.iconComponent && (
-                        <span className="text-primary/70">{column.iconComponent}</span>
-                      )}
+                      <span className="text-sm font-semibold tracking-wide">{column.label}</span>
                       {getSortIndicator(column.key)}
                     </div>
                   </TableHead>
@@ -787,31 +779,31 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
             </TableHeader>
             <TableBody>
               {paginatedGroups.length > 0 ? (
-                paginatedGroups.map((group: GroupedDataItem) => (
+                paginatedGroups.map((group: GroupedDataItem, index: number) => (
                   <React.Fragment key={group.key}>
                     {/* Parent rows for grouped mode, or all rows for flat mode */}
                     {(tableView === "flat" || (tableView === "grouped" && !group.isChild)) && (
                       <motion.tr 
                         key={`parent-${group.key}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
                         className={cn(
-                          tableView === "flat" ? "hover:bg-gray-50/50" : "cursor-pointer hover:bg-primary/5 transition-colors duration-200",
-                          tableView === "grouped" && expandedRows[group.key] && "bg-primary/10"
+                          tableView === "flat" ? "hover:bg-primary/5 border-b border-slate-100" : 
+                          "cursor-pointer hover:bg-primary/8 transition-all duration-200 border-b border-slate-100",
+                          tableView === "grouped" && expandedRows[group.key] && "bg-primary/10 shadow-sm"
                         )}
                         onClick={tableView === "grouped" ? () => toggleRowExpansion(group.key) : undefined}
                         style={{ height: `${rowHeight}px` }}
                       >
                         {tableView === "grouped" && groupBy !== "none" && (
-                          <TableCell className="py-2 relative">
+                          <TableCell className="text-center">
                             <motion.div
                               initial={{ rotate: 0 }}
                               animate={{ rotate: expandedRows[group.key] ? 90 : 0 }}
                               transition={{ duration: 0.2 }}
-                              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
                             >
-                              <ChevronRight className="h-4 w-4 text-primary" />
+                              <ChevronRight className="h-4 w-4 text-primary mx-auto" />
                             </motion.div>
                           </TableCell>
                         )}
@@ -819,13 +811,15 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                         {visibleColumns.map(column => {
                           if (column.key === 'teacherName') {
                             return (
-                              <TableCell key={column.key} className="py-2 text-left">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-6 w-6 ring-2 ring-primary/20">
+                              <TableCell key={column.key} className="py-3 px-6">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8 ring-2 ring-primary/20 shadow-sm">
                                     <AvatarImage src={trainerAvatars[group.teacherName]} />
-                                    <AvatarFallback className="bg-primary/20 text-primary">{group.teacherName?.charAt(0) || '?'}</AvatarFallback>
+                                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30 text-primary font-semibold">
+                                      {group.teacherName?.charAt(0) || '?'}
+                                    </AvatarFallback>
                                   </Avatar>
-                                  {group.teacherName}
+                                  <span className="font-medium text-slate-700">{group.teacherName}</span>
                                 </div>
                               </TableCell>
                             );
@@ -833,12 +827,12 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                           
                           if (column.key === 'cleanedClass' && tableView === 'grouped') {
                             return (
-                              <TableCell key={column.key} className="py-2 text-left">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary font-normal">
+                              <TableCell key={column.key} className="py-3 px-6">
+                                <div className="flex items-center gap-3">
+                                  <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary font-medium px-2 py-1">
                                     {group.children?.length || 0}
                                   </Badge>
-                                  <span className="font-medium">{group.cleanedClass}</span>
+                                  <span className="font-semibold text-slate-800">{group.cleanedClass}</span>
                                 </div>
                               </TableCell>
                             );
@@ -847,16 +841,18 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                           if (column.key === 'classAverageIncludingEmpty' || column.key === 'classAverageExcludingEmpty') {
                             const value = group[column.key as keyof GroupedDataItem];
                             return (
-                              <TableCell key={column.key} className="py-2 text-right">
-                                {typeof value === 'number' ? value.toFixed(1) : String(value)}
+                              <TableCell key={column.key} className="py-3 px-6 text-center">
+                                <span className="font-medium text-slate-700">
+                                  {typeof value === 'number' ? value.toFixed(1) : String(value)}
+                                </span>
                               </TableCell>
                             );
                           }
                           
                           return (
                             <TableCell key={column.key} className={cn(
-                              "py-2", 
-                              column.numeric ? "text-right" : "text-left"
+                              "py-3 px-6 font-medium text-slate-700 whitespace-nowrap", 
+                              column.numeric ? "text-center" : "text-left"
                             )}>
                               {formatCellValue(column.key, group[column.key as keyof GroupedDataItem])}
                             </TableCell>
@@ -866,58 +862,65 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
                     )}
                     
                     {/* Child rows for expanded grouped mode */}
-                    {tableView === "grouped" && expandedRows[group.key] && group.children && (
-                      <>
-                        {group.children.map((child: ProcessedData, index: number) => (
-                          <motion.tr 
-                            key={`child-${group.key}-${index}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ delay: index * 0.02 }}
-                            className="hover:bg-gray-50/50 border-t border-gray-100/50 bg-gray-50/20"
-                            style={{ height: `${rowHeight}px` }}
-                          >
-                            <TableCell className="py-1">
-                              <div className="w-4"></div>
-                            </TableCell>
-                            
-                            {visibleColumns.map(column => {
-                              if (column.key === 'teacherName') {
+                    <AnimatePresence>
+                      {tableView === "grouped" && expandedRows[group.key] && group.children && (
+                        <>
+                          {group.children.map((child: ProcessedData, childIndex: number) => (
+                            <motion.tr 
+                              key={`child-${group.key}-${childIndex}`}
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: `${rowHeight}px` }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ delay: childIndex * 0.02 }}
+                              className="hover:bg-slate-50/80 border-t border-slate-100/50 bg-slate-50/40"
+                            >
+                              <TableCell className="py-2 px-6">
+                                <div className="w-4"></div>
+                              </TableCell>
+                              
+                              {visibleColumns.map(column => {
+                                if (column.key === 'teacherName') {
+                                  return (
+                                    <TableCell key={column.key} className="py-2 px-6">
+                                      <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                          <AvatarImage src={trainerAvatars[child.teacherName || '']} />
+                                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                                            {(child.teacherName || '?').charAt(0)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm font-medium text-slate-600">{child.teacherName}</span>
+                                      </div>
+                                    </TableCell>
+                                  );
+                                }
+
+                                const childValue = child[column.key as keyof ProcessedData];
+                                
                                 return (
-                                  <TableCell key={column.key} className="py-1 text-left">
-                                    <div className="flex items-center gap-2">
-                                      <Avatar className="h-5 w-5">
-                                        <AvatarImage src={trainerAvatars[child.teacherName || '']} />
-                                        <AvatarFallback className="bg-primary/10 text-primary text-xs">{(child.teacherName || '?').charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-sm">{child.teacherName}</span>
-                                    </div>
+                                  <TableCell key={column.key} className={cn(
+                                    "py-2 px-6 text-sm text-slate-600 whitespace-nowrap", 
+                                    column.numeric ? "text-center" : "text-left"
+                                  )}>
+                                    {formatCellValue(column.key, childValue)}
                                   </TableCell>
                                 );
-                              }
-
-                              const childValue = child[column.key as keyof ProcessedData];
-                              
-                              return (
-                                <TableCell key={column.key} className={cn(
-                                  "py-1", 
-                                  column.numeric ? "text-right" : "text-left"
-                                )}>
-                                  {formatCellValue(column.key, childValue)}
-                                </TableCell>
-                              );
-                            })}
-                          </motion.tr>
-                        ))}
-                      </>
-                    )}
+                              })}
+                            </motion.tr>
+                          ))}
+                        </>
+                      )}
+                    </AnimatePresence>
                   </React.Fragment>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={visibleColumns.length + (tableView === "grouped" ? 1 : 0)} className="h-24 text-center">
-                    No results found.
+                  <TableCell colSpan={visibleColumns.length + (tableView === "grouped" ? 1 : 0)} className="h-32 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-muted-foreground font-medium">No results found</p>
+                      <p className="text-sm text-muted-foreground/70">Try adjusting your search or filters</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -925,51 +928,56 @@ export function DataTable({ data, trainerAvatars }: DataTableProps) {
           </Table>
         </div>
         
-        {/* Pagination */}
+        {/* Enhanced Pagination */}
         {sortedGroups.length > pageSize && (
-          <div className="py-4 bg-white/80 border-t">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => goToPage(currentPage - 1)}
-                    className={cn("cursor-pointer", currentPage === 1 && "opacity-50 cursor-not-allowed")}
-                  />
-                </PaginationItem>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum: number;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
+          <div className="py-4 px-6 bg-gradient-to-r from-slate-50 to-white border-t border-slate-200">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground font-medium">
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedGroups.length)} of {sortedGroups.length} results
+              </p>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => goToPage(currentPage - 1)}
+                      className={cn("cursor-pointer hover:bg-primary/10", currentPage === 1 && "opacity-50 cursor-not-allowed")}
+                    />
+                  </PaginationItem>
                   
-                  return (
-                    <PaginationItem key={i}>
-                      <PaginationLink
-                        onClick={() => goToPage(pageNum)}
-                        isActive={currentPage === pageNum}
-                        className="cursor-pointer"
-                      >
-                        {pageNum}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
-                
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => goToPage(currentPage + 1)}
-                    className={cn("cursor-pointer", currentPage === totalPages && "opacity-50 cursor-not-allowed")}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => goToPage(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer hover:bg-primary/10"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => goToPage(currentPage + 1)}
+                      className={cn("cursor-pointer hover:bg-primary/10", currentPage === totalPages && "opacity-50 cursor-not-allowed")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         )}
       </div>
