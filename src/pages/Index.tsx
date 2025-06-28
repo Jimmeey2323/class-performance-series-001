@@ -47,7 +47,7 @@ const Index = () => {
     } finally {
       setTimeout(() => {
         setLoading(false);
-      }, 1000); // Keep loading for a short period to show progress
+      }, 1000);
     }
   };
   
@@ -62,34 +62,21 @@ const Index = () => {
   };
   
   return (
-    <div className="bg-slate-50 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen">
       {!fileUploaded ? (
-        <motion.div 
-          className="flex flex-col items-center justify-center min-h-screen p-6" 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.img 
-            src="https://i.imgur.com/9mOm7gP.png" 
-            alt="Logo" 
-            initial={{ rotate: 0 }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="h-20 w-auto mb-6 object-contain"
-          />
-          <FileUploader onFileUpload={handleFileUpload} />
-        </motion.div>
+        <FileUploader onFileUpload={handleFileUpload} />
       ) : (
-        <Dashboard 
-          data={data} 
-          loading={loading} 
-          progress={progress} 
-          onReset={handleReset} 
-          viewMode={viewMode} 
-          setViewMode={setViewMode} 
-          onLogout={handleLogout} 
-        />
+        <div className="bg-slate-50 dark:bg-gray-900 min-h-screen">
+          <Dashboard 
+            data={data} 
+            loading={loading} 
+            progress={progress} 
+            onReset={handleReset} 
+            viewMode={viewMode} 
+            setViewMode={setViewMode} 
+            onLogout={handleLogout} 
+          />
+        </div>
       )}
     </div>
   );
