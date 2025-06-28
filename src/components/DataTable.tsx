@@ -734,7 +734,7 @@ export function DataTable({
           <Table>
             <TableHeader className="bg-gradient-to-r from-slate-100 to-slate-50 sticky top-0 z-10">
               <TableRow className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-pink-700 px-[10px]">
-                {tableView === "grouped" && groupBy !== "none" && <TableHead className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-indigo-700 px-4 py-2 text-white"></TableHead>}
+                {tableView === "grouped" && groupBy !== "none" && <TableHead className="bg-gradient-to-br from-blue-900 via-indigo-800 to-indigo-900 text-white whitespace-nowrap uppercase text-sm border-b-4 border-pink-700 px-4 py-2 text-white"></TableHead>}
                 {visibleColumns.map(column => <TableHead key={column.key} onClick={() => requestSort(column.key)} className="">
                     <div className={cn("flex items-center gap-2 font-medium", column.numeric ? "justify-center" : "justify-start")}>
                       {!column.numeric && column.iconComponent && <span className="text-primary/70">{column.iconComponent}</span>}
