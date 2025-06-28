@@ -392,14 +392,14 @@ export function DataTable({
       label: "Avg. (All)",
       numeric: true,
       currency: false,
-      iconComponent: <BarChart3 className="h-4 w-4" />,
+      iconComponent: <BarChart3 className="h-4 w-4 text-gray-300" />,
       visible: true
     }, {
       key: "classAverageExcludingEmpty",
       label: "Avg. (Non-empty)",
       numeric: true,
       currency: false,
-      iconComponent: <BarChart3 className="h-4 w-4" />,
+      iconComponent: <BarChart3 className="h-4 w-4 text-gray-300" />,
       visible: true
     }];
     const financialColumns: ColumnDefinition[] = [{
@@ -532,7 +532,7 @@ export function DataTable({
     if (!sortConfig || sortConfig.key !== key) {
       return null;
     }
-    return sortConfig.direction === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+    return sortConfig.direction === "asc" ? <ArrowUp className="h-4 w-4 text-gray-300" /> : <ArrowDown className="h-4 w-4" />;
   };
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
