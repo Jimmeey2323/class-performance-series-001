@@ -333,28 +333,28 @@ export function DataTable({
     const baseColumns: ColumnDefinition[] = [{
       key: "cleanedClass",
       label: "Class Type",
-      iconComponent: <ListChecks className="h-4 w-4 text-indigo-800" />,
+      iconComponent: <ListChecks className="h-4 w-4" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "dayOfWeek",
       label: "Day",
-      iconComponent: <Calendar className="h-4 w-4 text-indigo-800" />,
+      iconComponent: <Calendar className="h-4 w-4" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "classTime",
       label: "Time",
-      iconComponent: <Clock className="h-4 w-4 text-indigo-800" />,
+      iconComponent: <Clock className="h-4 w-4" />,
       numeric: false,
       currency: false,
       visible: true
     }, {
       key: "location",
       label: "Location",
-      iconComponent: <MapPin className="h-4 w-4 text-indigo-800" />,
+      iconComponent: <MapPin className="h-4 w-4" />,
       numeric: false,
       currency: false,
       visible: true
