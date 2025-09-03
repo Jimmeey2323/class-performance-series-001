@@ -87,17 +87,25 @@ const SimpleDataFilters: React.FC<SimpleDataFiltersProps> = ({
     return [0, Math.max(...values, 10000)];
   }, [data]);
 
-  // Filter state
+  // Helper to get previous month range
+  const getPrevMonthRange = () => {
+    const now = new Date();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const month = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    return { from: firstDay, to: lastDay };
+  };
+
   const [filterValues, setFilterValues] = useState({
     classType: "all",
     location: "all",
     trainer: "all",
     dayOfWeek: "all",
     period: "all",
-    dateRange: { from: undefined, to: undefined } as DateRange,
+    dateRange: getPrevMonthRange(),
     hasParticipants: false
   });
-
   // Update filter options when filterValues change
   useEffect(() => {
     const newFilters: FilterOption[] = [];
