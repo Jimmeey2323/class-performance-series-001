@@ -128,7 +128,7 @@ const Index = () => {
   };
 
   const handleLogout = () => {
-    navigate('/auth');
+    // No-op: remove auth navigation
   };
   
   return (

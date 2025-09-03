@@ -30,7 +30,7 @@ import {
   Filter,
   X
 } from 'lucide-react';
-import ProgressBar from '@/components/ProgressBar';
+import { Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import CountUp from 'react-countup';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,7 +256,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
         >
-          <ProgressBar progress={progress} />
+          <Loader2 className="animate-spin w-16 h-16 text-blue-500" />
         </motion.div>
         <motion.div 
           className="text-center"
@@ -297,12 +297,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             />
             <div>
               <motion.h1 
-                className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400"
+                className="text-4xl font-extrabold mb-2 tracking-tight bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent drop-shadow-xl"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                Class Analytics Dashboard
+                  <span className="inline-block align-middle">Class Analytics Dashboard</span>
+                  <span className="ml-2 inline-block align-middle animate-pulse text-pink-400 text-2xl">●</span>
               </motion.h1>
               <motion.p 
                 className="text-xs text-slate-500 dark:text-slate-400"
