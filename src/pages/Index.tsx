@@ -14,12 +14,13 @@ const Index = () => {
   const [fileUploaded, setFileUploaded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [skipDefaultLoad, setSkipDefaultLoad] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   // Load default zip file from public folder on mount
   React.useEffect(() => {
-    if (!fileUploaded) {
+  if (!fileUploaded && !skipDefaultLoad) {
       setLoading(true);
       setProgress(10);
       // Try to fetch the first zip file in public starting with the given prefix
@@ -120,9 +121,10 @@ const Index = () => {
   };
 
   const handleReset = () => {
-    setData([]);
-    setFileUploaded(false);
-    setProgress(0);
+  setData([]);
+  setFileUploaded(false);
+  setProgress(0);
+  setSkipDefaultLoad(true); // User wants to upload new file, skip default loading
   };
 
   const handleLogout = () => {
@@ -139,7 +141,7 @@ const Index = () => {
             data={data} 
             loading={loading} 
             progress={progress} 
-            onReset={handleReset} 
+            onReset={handleReset} // This is called when 'Upload New' is clicked
             viewMode={viewMode} 
             setViewMode={setViewMode} 
             onLogout={handleLogout} 
