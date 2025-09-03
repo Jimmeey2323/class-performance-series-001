@@ -85,7 +85,27 @@ const Dashboard: React.FC<DashboardProps> = ({
   onLogout
 }) => {
   const [filteredData, setFilteredData] = useState<ProcessedData[]>([]);
-  const [filters, setFilters] = useState<FilterOption[]>([]);
+  // Default filter: first and last day of previous month
+  const getPrevMonthRange = () => {
+    const now = new Date();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const month = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    return {
+      start: firstDay,
+      end: lastDay
+    };
+  };
+
+  const prevMonthRange = getPrevMonthRange();
+  const [filters, setFilters] = useState<FilterOption[]>([
+    {
+      type: 'date',
+      startDate: prevMonthRange.start,
+      endDate: prevMonthRange.end
+    }
+  ]);
   const [sortOptions, setSortOptions] = useState<SortOption[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTrainerComparison, setShowTrainerComparison] = useState(false);
