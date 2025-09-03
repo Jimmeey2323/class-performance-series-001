@@ -293,8 +293,11 @@ export function DataTable({
     label: "All Columns"
   }];
   const filteredGroups = useMemo(() => {
-    // Exclude groups with fewer than minClasses
-    let groups = groupedData.filter(group => group.children && group.children.length >= minClasses);
+    let groups = groupedData;
+    // Only apply minClasses filter in grouped view
+    if (tableView === "grouped") {
+      groups = groups.filter(group => group.children && group.children.length >= minClasses);
+    }
     if (!searchTerm) return groups;
     const searchLower = searchTerm.toLowerCase();
     return groups.filter((group: GroupedDataItem) => {
