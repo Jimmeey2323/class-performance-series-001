@@ -28,7 +28,8 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
-  X
+  X,
+  ListChecks
 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
