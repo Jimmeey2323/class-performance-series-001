@@ -131,9 +131,10 @@ const Index = () => {
   
   return (
     <div className="min-h-screen">
-      <FileUploader onFileUpload={handleFileUpload} />
-      {fileUploaded && (
-        <div className="bg-slate-50 dark:bg-gray-900 min-h-screen">
+      {!fileUploaded ? (
+        <FileUploader onFileUpload={handleFileUpload} />
+      ) : (
+        <div className="bg-slate-50 dark:bg-gray-900 min-h-screen w-full">
           <Dashboard 
             data={data} 
             loading={loading} 
