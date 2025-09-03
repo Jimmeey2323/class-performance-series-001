@@ -101,9 +101,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   const prevMonthRange = getPrevMonthRange();
   const [filters, setFilters] = useState<FilterOption[]>([
     {
-      type: 'date',
-      startDate: prevMonthRange.start,
-      endDate: prevMonthRange.end
+      field: 'date',
+      operator: 'between',
+      value: `${prevMonthRange.start.toISOString()},${prevMonthRange.end.toISOString()}`
     }
   ]);
   const [sortOptions, setSortOptions] = useState<SortOption[]>([]);
