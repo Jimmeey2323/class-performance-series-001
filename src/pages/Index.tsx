@@ -22,56 +22,76 @@ const Index = () => {
     if (!fileUploaded) {
       setLoading(true);
       setProgress(10);
-      // Dynamically find the first .zip file in the public folder
-      fetch('/public')
-        .then((res) => res.text())
-        .then((html) => {
-          // Parse the HTML directory listing to find .zip files
-          const matches = html.match(/href="([^"]+\.zip)"/gi);
-          if (!matches || matches.length === 0) throw new Error('No ZIP file found in public folder');
-          // Use the first zip file found
-          const zipFileName = matches[0].replace(/href=|"/g, '');
-          return fetch(`/${zipFileName}`);
-        })
-        .then((res) => {
-          if (!res.ok) throw new Error('Failed to fetch ZIP file');
-          return res.blob();
-        })
-        .then((blob) => {
-          // Convert blob to File object
-          const file = new File([blob], 'default.zip', { type: blob.type });
-          setProgress(30);
-          return processZipFile(file);
-        })
-        .then((processedData) => {
-          setProgress(70);
-          if (processedData && processedData.length > 0) {
-            setData(processedData);
-            setFileUploaded(true);
-            setProgress(100);
-            toast({
-              title: 'Default file loaded',
-              description: `Loaded ${processedData.length} records from the default ZIP file.`,
-              duration: 3000
-            });
-          } else {
-            throw new Error('No data found or processed in default ZIP');
+      // Try to fetch the first zip file in public starting with the given prefix
+      const zipPrefix = 'momence-teachers-payroll-report-summary';
+      // Try a few possible extensions
+      const possibleExtensions = ['.zip'];
+      // Try a few possible files (if more than one, pick the first that exists)
+      const possibleFiles = [
+        `${zipPrefix}.zip`,
+        `${zipPrefix} (1).zip`,
+        `${zipPrefix} (2).zip`,
+        `${zipPrefix} (3).zip`,
+        `${zipPrefix} (4).zip`,
+        `${zipPrefix} (5).zip`,
+        `${zipPrefix} (6).zip`,
+        `${zipPrefix} (7).zip`,
+        `${zipPrefix} (8).zip`,
+        `${zipPrefix} (9).zip`,
+        `${zipPrefix} (10).zip`,
+        `${zipPrefix} (11).zip`,
+        `${zipPrefix} (12).zip`,
+        `${zipPrefix} (13).zip`,
+        `${zipPrefix} (14).zip`,
+        `${zipPrefix} (15).zip`,
+        `${zipPrefix} (16).zip`,
+        `${zipPrefix} (17).zip`,
+        `${zipPrefix} (18).zip`,
+        `${zipPrefix} (19).zip`,
+        `${zipPrefix} (20).zip`,
+      ];
+      (async () => {
+        let found = false;
+        for (const filename of possibleFiles) {
+          try {
+            const res = await fetch(`/${filename}`);
+            if (res.ok) {
+              found = true;
+              const blob = await res.blob();
+              const file = new File([blob], filename, { type: blob.type });
+              setProgress(30);
+              const processedData = await processZipFile(file);
+              setProgress(70);
+              if (processedData && processedData.length > 0) {
+                setData(processedData);
+                setFileUploaded(true);
+                setProgress(100);
+                toast({
+                  title: 'Default file loaded',
+                  description: `Loaded ${processedData.length} records from the default ZIP file (${filename}).`,
+                  duration: 3000
+                });
+              } else {
+                throw new Error('No data found or processed in default ZIP');
+              }
+              break;
+            }
+          } catch (error) {
+            // Try next file
           }
-        })
-        .catch((error) => {
-          console.error('Error loading default ZIP:', error);
+        }
+        if (!found) {
           toast({
             title: 'Error loading default ZIP',
-            description: error.message || 'There was an error loading the default ZIP file.',
+            description: 'No ZIP file found in public folder with the expected prefix.',
             variant: 'destructive',
             duration: 5000
           });
-        })
-        .finally(() => {
-          setTimeout(() => {
-            setLoading(false);
-          }, 1000);
-        });
+        }
+        setTimeout(() => {
+          setLoading(false);
+        }, 1000);
+      })();
     }
   }, [fileUploaded]);
 
