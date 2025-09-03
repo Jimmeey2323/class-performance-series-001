@@ -24,37 +24,27 @@ const Index = () => {
       setProgress(10);
       // Try to fetch the first zip file in public starting with the given prefix
       const zipPrefix = 'momence-teachers-payroll-report-summary';
-      // Try a few possible extensions
-      const possibleExtensions = ['.zip'];
-      // Try a few possible files (if more than one, pick the first that exists)
-      const possibleFiles = [
+      // Most likely filename variants
+      const variants = [
+        `${zipPrefix} (52).zip`,
+        encodeURIComponent(`${zipPrefix} (52).zip`),
+        `${zipPrefix}-52.zip`,
         `${zipPrefix}.zip`,
         `${zipPrefix} (1).zip`,
+        encodeURIComponent(`${zipPrefix} (1).zip`),
+        `${zipPrefix}-1.zip`,
         `${zipPrefix} (2).zip`,
-        `${zipPrefix} (3).zip`,
-        `${zipPrefix} (4).zip`,
-        `${zipPrefix} (5).zip`,
-        `${zipPrefix} (6).zip`,
-        `${zipPrefix} (7).zip`,
-        `${zipPrefix} (8).zip`,
-        `${zipPrefix} (9).zip`,
-        `${zipPrefix} (10).zip`,
-        `${zipPrefix} (11).zip`,
-        `${zipPrefix} (12).zip`,
-        `${zipPrefix} (13).zip`,
-        `${zipPrefix} (14).zip`,
-        `${zipPrefix} (15).zip`,
-        `${zipPrefix} (16).zip`,
-        `${zipPrefix} (17).zip`,
-        `${zipPrefix} (18).zip`,
-        `${zipPrefix} (19).zip`,
-        `${zipPrefix} (20).zip`,
+        encodeURIComponent(`${zipPrefix} (2).zip`),
+        `${zipPrefix}-2.zip`,
+        // Add more if needed
       ];
       (async () => {
         let found = false;
-        for (const filename of possibleFiles) {
+        for (const filename of variants) {
+          const url = `/${filename}`;
+          console.log('Trying to fetch zip file:', url);
           try {
-            const res = await fetch(`/${filename}`);
+            const res = await fetch(url);
             if (res.ok) {
               found = true;
               const blob = await res.blob();
@@ -83,7 +73,7 @@ const Index = () => {
         if (!found) {
           toast({
             title: 'Error loading default ZIP',
-            description: 'No ZIP file found in public folder with the expected prefix.',
+            description: 'No ZIP file found in public folder with the expected prefix or variants.',
             variant: 'destructive',
             duration: 5000
           });
