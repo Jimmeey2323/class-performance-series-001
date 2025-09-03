@@ -97,7 +97,15 @@ const SimpleDataFilters: React.FC<SimpleDataFiltersProps> = ({
     return { from: firstDay, to: lastDay };
   };
 
-  const [filterValues, setFilterValues] = useState({
+  const [filterValues, setFilterValues] = useState<{
+    classType: string;
+    location: string;
+    trainer: string;
+    dayOfWeek: string;
+    period: string;
+    dateRange: DateRange;
+    hasParticipants: boolean;
+  }>({
     classType: "all",
     location: "all",
     trainer: "all",

@@ -385,10 +385,59 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       <div className="container mx-auto px-4">
-        <div className="mb-4">
+
+        {/* Quick Filters & Theme Toggle */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <SearchBar onSearch={handleSearchChange} data={data} />
+          <ThemeToggle />
+          <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="bg-white shadow-md border-0 hover:bg-gray-50" title="Export as CSV">
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport('json')} className="bg-white shadow-md border-0 hover:bg-gray-50" title="Export as JSON">
+            <FileJson className="mr-2 h-4 w-4" />
+            Export JSON
+          </Button>
         </div>
 
+        {/* Summary Metric Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+          <Card className="shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+            <CardContent className="flex flex-col items-center py-6">
+              <BarChart3 className="w-8 h-8 text-blue-500 mb-2" />
+              <span className="text-lg font-bold">{filteredData.length}</span>
+              <span className="text-xs text-blue-700">Total Classes</span>
+            </CardContent>
+          </Card>
+          <Card className="shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+            <CardContent className="flex flex-col items-center py-6">
+              <ListChecks className="w-8 h-8 text-green-500 mb-2" />
+              <span className="text-lg font-bold">{filteredData.reduce((acc, d) => acc + (Number(d.totalCheckins) || 0), 0)}</span>
+              <span className="text-xs text-green-700">Total Check-ins</span>
+            </CardContent>
+          </Card>
+          <Card className="shadow-lg bg-gradient-to-br from-pink-50 to-pink-100">
+            <CardContent className="flex flex-col items-center py-6">
+              <IndianRupee className="w-8 h-8 text-pink-500 mb-2" />
+              <span className="text-lg font-bold">₹{filteredData.reduce((acc, d) => acc + (Number(d.totalRevenue) || 0), 0).toLocaleString()}</span>
+              <span className="text-xs text-pink-700">Total Revenue</span>
+            </CardContent>
+          </Card>
+          <Card className="shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+            <CardContent className="flex flex-col items-center py-6">
+              <User className="w-8 h-8 text-purple-500 mb-2" />
+              <span className="text-lg font-bold">{[...new Set(filteredData.map(d => d.teacherName))].length}</span>
+              <span className="text-xs text-purple-700">Unique Trainers</span>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Advanced Analytics Chart Panel */}
+        <motion.div className="mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <ChartPanel data={filteredData} />
+        </motion.div>
+
+        {/* Filters */}
         <SimpleDataFilters 
           onFilterChange={handleFilterChange}
           onSortChange={handleSortChange}
@@ -396,8 +445,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           filtersCount={filters.length}
         />
 
-        <MetricsPanel data={filteredData} />
-        
+        {/* Top/Bottom Classes */}
         <motion.div 
           className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"
           initial={{ opacity: 0, y: 20 }}
