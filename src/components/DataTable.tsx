@@ -91,6 +91,8 @@ export function DataTable({
   const [tableView, setTableView] = useState("grouped");
   const [rowHeight, setRowHeight] = useState(35);
   const [expandAllGroups, setExpandAllGroups] = useState(false);
+  // Minimum number of classes per group to show
+  const [minClasses, setMinClasses] = useState(2);
   useEffect(() => {
     if (tableView === "grouped") {
       const newExpandedState: Record<string, boolean> = {};
@@ -291,9 +293,11 @@ export function DataTable({
     label: "All Columns"
   }];
   const filteredGroups = useMemo(() => {
-    if (!searchTerm) return groupedData;
+    // Exclude groups with fewer than minClasses
+    let groups = groupedData.filter(group => group.children && group.children.length >= minClasses);
+    if (!searchTerm) return groups;
     const searchLower = searchTerm.toLowerCase();
-    return groupedData.filter((group: GroupedDataItem) => {
+    return groups.filter((group: GroupedDataItem) => {
       if (tableView === "flat") {
         return Object.values(group).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower));
       }
@@ -304,7 +308,7 @@ export function DataTable({
       }
       return false;
     });
-  }, [groupedData, searchTerm, tableView]);
+  }, [groupedData, searchTerm, tableView, minClasses]);
   const sortedGroups = useMemo(() => {
     if (!sortConfig) return filteredGroups;
     return [...filteredGroups].sort((a, b) => {
@@ -619,6 +623,18 @@ export function DataTable({
           <div className="text-right text-white">
             <p className="text-2xl font-bold">{filteredData.length}</p>
             <p className="text-slate-300">Total Records</p>
+            <div className="mt-2">
+              <label htmlFor="minClasses" className="text-xs text-white mr-2">Min Classes per Group:</label>
+              <input
+                id="minClasses"
+                type="number"
+                min={1}
+                value={minClasses}
+                onChange={e => setMinClasses(Number(e.target.value))}
+                className="w-16 px-2 py-1 rounded bg-white text-slate-900 border border-slate-300 text-xs"
+                style={{marginLeft: 4}}
+              />
+            </div>
           </div>
         </div>
       </div>
